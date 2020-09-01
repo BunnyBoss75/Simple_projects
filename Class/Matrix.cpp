@@ -3,13 +3,8 @@
 Matrix::Matrix(): epsilon(10e-8), height(0), width(0), matrix(nullptr) {}
 
 Matrix::Matrix(const Matrix& other): epsilon(other.epsilon), height(other.height), width(other.width) {
-	matrix = new double* [height];
-	for (int i = 0; i < height; ++i) {
-		matrix[i] = new double[width];
-		for (int j = 0; j < width; ++j) {
-			matrix[i][j] = other.matrix[i][j];
-		}
-	}
+	matrix = new double [height * width];
+	memcpy(other.matrix, this->matrix, sizeof(double) * height * width);
 }
 
 Matrix::Matrix(Matrix&& other): epsilon(other.epsilon), height(other.height), width(other.width), matrix(other.matrix) {
@@ -18,46 +13,29 @@ Matrix::Matrix(Matrix&& other): epsilon(other.epsilon), height(other.height), wi
 	other.matrix = nullptr;
 }
 
-Matrix::Matrix(double**& pointer, int _height, int _width): epsilon(10e-8), height(_height), width(_width), matrix(pointer){
-	pointer = nullptr;
-}
-
 Matrix::Matrix(int _height, int _width): epsilon(10e-8), height(_height), width(_width) {
-	matrix = new double* [height];
-	for (int i = 0; i < height; ++i) {
-		matrix[i] = new double[width];
-	}
+	matrix = new double [height * width];
 }
 
 Matrix::Matrix(int _height, int _width, double value): epsilon(10e-8), height(_height), width(_width) {
-	matrix = new double* [height];
-	for (int i = 0; i < height; ++i) {
-		matrix[i] = new double[width];
-		for (int j = 0; j < width; ++j) {
-			matrix[i][j] = value;
-		}
-	}
+	matrix = new double[height * width]{value};
+	fill_n(*matrix, height * width, value);
 }
 
 Matrix::~Matrix() {
-	for (int i = 0; i < height; ++i) {
-		delete matrix[i];
-	}
 	delete matrix;
 }
 
 Matrix& Matrix::operator=(const Matrix& rhs) {
 	this->~Matrix();
+
 	epsilon = rhs.epsilon;
 	height = rhs.height;
 	width = rhs.width;
-	matrix = new double* [height];
-	for (int i = 0; i < height; ++i) {
-		matrix[i] = new double[width];
-		for (int j = 0; j < width; ++j) {
-			matrix[i][j] = rhs.matrix[i][j];
-		}
-	}
+
+	matrix = new double [height * width];
+	memcpy(rhs.matrix, this->matrix, sizeof(double) * height * width);
+
 	return *this;
 }
 
@@ -78,18 +56,14 @@ Matrix& Matrix::operator=(Matrix&& rhs) {
 
 bool Matrix::operator==(const Matrix& rhs) {
 	if (height == rhs.height && width == rhs.width) {
-		for (int i = 0; i < height; ++i) {
-			for (int j = 0; j < width; ++j) {
-				if (abs(matrix[i][j]) - abs(rhs.matrix[i][j]) >= epsilon) {
-					return false;
-				}
+		for (int i = 0; i < height * width; ++i) {
+			if (abs(this->matrix[i] - rhs.matrix[i]) >= epsilon) {
+				return false;
 			}
 		}
 		return true;
 	}
-	else {
-		return false;
-	}
+	return false;
 }
 
 Matrix Matrix::operator+(const Matrix& rhs) {
@@ -97,10 +71,8 @@ Matrix Matrix::operator+(const Matrix& rhs) {
 		throw "matrix dimensions are not equal";
 	}
 	Matrix result(height, width);
-	for (int i = 0; i < height; ++i) {
-		for (int j = 0; j < width; ++j) {
-			result[i][j] = matrix[i][j] + rhs.matrix[i][j];
-		}
+	for (int i = 0; i < height * width; ++i) {
+		result.matrix[i] = this->matrix[i] + rhs.matrix[i];
 	}
 	return result;
 }
@@ -110,10 +82,8 @@ Matrix Matrix::operator-(const Matrix& rhs) {
 		throw "matrix dimensions are not equal";
 	}
 	Matrix result(height, width);
-	for (int i = 0; i < height; ++i) {
-		for (int j = 0; j < width; ++j) {
-			result[i][j] = matrix[i][j] - rhs.matrix[i][j];
-		}
+	for (int i = 0; i < height * width; ++i) {
+		result.matrix[i] = this->matrix[i] - rhs.matrix[i];
 	}
 	return result;
 }
@@ -123,10 +93,21 @@ Matrix Matrix::operator*(const Matrix& rhs) {
 		throw "the number of columns of matrix 1 is not equal to the number of rows of matrix 2";
 	}
 	Matrix result(height, rhs.width, 0);
-	for (int i = 0; i < result.height; ++i) {
-		for (int j = 0; j < result.width; ++j) {
-			for (int k = 0; k < width; ++k) {
-				result[i][j] += matrix[i][k] * rhs.matrix[k][j];
+
+	// some optimization of matrix multiplication
+
+	// for comfort 
+	int M = result.height;
+	int N = result.width;
+	int P = this->width;
+
+	for (int i = 0; i < M; ++i) {
+		double* resultLine = result.matrix + i * N;
+		for (int j = 0; j < P; ++j) {
+			double thisValue = this->matrix[i * P + j];
+			double* rhsLine = rhs.matrix + N * j;
+			for (int k = 0; k < N; ++k) {
+				resultLine[k] += thisValue * rhsLine[k];
 			}
 		}
 	}
@@ -135,57 +116,28 @@ Matrix Matrix::operator*(const Matrix& rhs) {
 
 Matrix Matrix::operator*(const double number) {
 	Matrix result(*this);
-	for (int i = 0; i < result.height; ++i) {
-		for (int j = 0; j < result.width; ++j) {
-			result[i][j] *= number;
-		}
+	for (int i = 0; i < this->height * this->width; ++i) {
+		result.matrix[i] *= number;
 	}
 	return result;
 }
 
 double* Matrix::operator[](const int _height) {
-	return matrix[_height];
+	return matrix + width * _height;
 }
 
 const double* Matrix::operator[](const int _height) const {
-	return matrix[_height];
+	return matrix + width * _height;
 }
 
-void Matrix::transpose() {
-	if (height == width) {
-		for (int i = 0; i < height; ++i) {
-			for (int j = i + 1; j < width; ++j) {
-				swap(matrix[i][j], matrix[j][i]);
-			}
-		}
-	}
-	else {
-		double** newMatrix = new double* [width];
-		for (int i = 0; i < width; ++i) {
-			newMatrix[i] = new double[height];
-			for (int j = 0; j < height; ++j) {
-				newMatrix[i][j] = matrix[j][i];
-			}
-		}
-
-		for (int i = 0; i < height; ++i) {
-			delete matrix[i];
-		}
-		delete matrix;
-
-		matrix = newMatrix;
-		swap(height, width);
-	}
+Matrix& Matrix::transpose() {
+	swap(height, width);
+	return *this;
 }
 
 Matrix Matrix::getTransposed() {
-	Matrix result(width, height);
-	for (int i = 0; i < height; ++i) {
-		for (int j = 0; j < width; ++j) {
-			result[j][i] = matrix[i][j];
-		}
-	}
-	return result;
+	Matrix result(*this);
+	return result.transpose();
 }
 
 vector<double> Matrix::getVector() {
@@ -193,18 +145,14 @@ vector<double> Matrix::getVector() {
 		throw "it's not a vector";
 	}
 	vector<double> result(width);
-	for (int i = 0; i < width; ++i) {
-		result[i] = matrix[0][i];
-	}
+	memcpy(matrix, &result[0], sizeof(double) * width);
 	return result;
 }
 
 vector<vector<double>> Matrix::getVectorOfVectors() {
 	vector<vector<double>> result(height, vector<double>(width));
 	for (int i = 0; i < height; ++i) {
-		for (int j = 0; j < width; ++j) {
-			result[i][j] = matrix[i][j];
-		}
+		memcpy(matrix + i * width, &result[i][0], sizeof(double) * width);
 	}
 	return result;
 }
@@ -224,7 +172,7 @@ double Matrix::getDeterminante() const{
 	while (true) {
 		temp = 1;
 		for (int i = 0; i < height; ++i) {
-			temp *= matrix[i][transposition[i]];
+			temp *= matrix[i * width + transposition[i]];
 		}
 		for (int i = 0; i < height - 1; ++i) {  // sign
 			for (int x = i + 1; x < height; ++x) {

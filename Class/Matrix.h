@@ -9,8 +9,7 @@ public:
 	Matrix();
 	Matrix(const Matrix& other);
 	Matrix(Matrix&& other);
-
-	Matrix(double**& pointer, int _height, int _width);
+	
 	Matrix(int _heigth, int _width);
 	Matrix(int _height, int _width, double value);
 
@@ -29,7 +28,7 @@ public:
 	double* operator[](const int _height);
 	const double* operator[](const int _height) const;
 
-	void transpose();
+	Matrix& transpose();
 	Matrix getTransposed();
 	vector<double> getVector();
 	vector<vector<double>> getVectorOfVectors();
@@ -48,5 +47,5 @@ private:
 
 	int height;
 	int width;
-	double** matrix;
+	double* matrix;
 };
