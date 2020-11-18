@@ -1,48 +1,50 @@
 #include "Matrix.h"
 
-Matrix::Matrix(): epsilon(10e-8), height(0), width(0), matrix(nullptr) {}
+template <typename T>
+Matrix<T>::Matrix(): height(0), width(0), matrix(nullptr) {}
 
-Matrix::Matrix(const Matrix& other): epsilon(other.epsilon), height(other.height), width(other.width) {
-	matrix = new double [height * width];
-	memcpy(other.matrix, this->matrix, sizeof(double) * height * width);
+template <typename T>
+Matrix<T>::Matrix(const Matrix& other): height(other.height), width(other.width), matrix(new T[height * width]) {
+	std::memcpy(other.matrix, this->matrix, sizeof(T) * height * width);
 }
 
-Matrix::Matrix(Matrix&& other): epsilon(other.epsilon), height(other.height), width(other.width), matrix(other.matrix) {
+template <typename T>
+Matrix<T>::Matrix(Matrix&& other): height(other.height), width(other.width), matrix(other.matrix) {
 	other.height = 0;
 	other.width = 0;
 	other.matrix = nullptr;
 }
 
-Matrix::Matrix(int _height, int _width): epsilon(10e-8), height(_height), width(_width) {
-	matrix = new double [height * width];
+template <typename T>
+Matrix<T>::Matrix(int _height, int _width): height(_height), width(_width), matrix(new T[height * width]()) {}
+
+template <typename T>
+Matrix<T>::Matrix(int _height, int _width, const T& value): height(_height), width(_width), matrix(new T[height*width]) {
+	std::fill_n(matrix, height * width, value);
 }
 
-Matrix::Matrix(int _height, int _width, double value): epsilon(10e-8), height(_height), width(_width) {
-	matrix = new double[height * width]{value};
-	fill_n(*matrix, height * width, value);
-}
-
-Matrix::~Matrix() {
+template <typename T>
+Matrix<T>::~Matrix() {
 	delete matrix;
 }
 
-Matrix& Matrix::operator=(const Matrix& rhs) {
+template <typename T>
+Matrix<T>& Matrix<T>::operator=(const Matrix<T>& rhs) {
 	this->~Matrix();
 
-	epsilon = rhs.epsilon;
 	height = rhs.height;
 	width = rhs.width;
 
-	matrix = new double [height * width];
-	memcpy(rhs.matrix, this->matrix, sizeof(double) * height * width);
+	matrix = new T[height * width];
+	std::memcpy(this->matrix, rhs.matrix, sizeof(T) * height * width);
 
 	return *this;
 }
 
-Matrix& Matrix::operator=(Matrix&& rhs) {
+template <typename T>
+Matrix<T>& Matrix<T>::operator=(Matrix<T>&& rhs) {
 	this->~Matrix();
 
-	epsilon = rhs.epsilon;
 	height = rhs.height;
 	width = rhs.width;
 	matrix = rhs.matrix;
@@ -54,45 +56,38 @@ Matrix& Matrix::operator=(Matrix&& rhs) {
 	return *this;
 }
 
-bool Matrix::operator==(const Matrix& rhs) {
-	if (height == rhs.height && width == rhs.width) {
-		for (int i = 0; i < height * width; ++i) {
-			if (abs(this->matrix[i] - rhs.matrix[i]) >= epsilon) {
-				return false;
-			}
-		}
-		return true;
-	}
-	return false;
-}
-
-Matrix Matrix::operator+(const Matrix& rhs) {
+template <typename T>
+Matrix<T> Matrix<T>::operator+(const Matrix<T>& rhs) const {
 	if (height != rhs.height || width != rhs.width) {
 		throw "matrix dimensions are not equal";
 	}
-	Matrix result(height, width);
+
+	Matrix<T> result(height, width);
 	for (int i = 0; i < height * width; ++i) {
 		result.matrix[i] = this->matrix[i] + rhs.matrix[i];
 	}
 	return result;
 }
 
-Matrix Matrix::operator-(const Matrix& rhs) {
+template <typename T>
+Matrix<T> Matrix<T>::operator-(const Matrix<T>& rhs) const {
 	if (height != rhs.height || width != rhs.width) {
 		throw "matrix dimensions are not equal";
 	}
-	Matrix result(height, width);
+
+	Matrix<T> result(height, width);
 	for (int i = 0; i < height * width; ++i) {
 		result.matrix[i] = this->matrix[i] - rhs.matrix[i];
 	}
 	return result;
 }
 
-Matrix Matrix::operator*(const Matrix& rhs) {
+template <typename T>
+Matrix<T> Matrix<T>::operator*(const Matrix<T>& rhs) const {
 	if (width != rhs.height) {
 		throw "the number of columns of matrix 1 is not equal to the number of rows of matrix 2";
 	}
-	Matrix result(height, rhs.width, 0);
+	Matrix<T> result(height, rhs.width, 0);
 
 	// some optimization of matrix multiplication
 
@@ -102,10 +97,10 @@ Matrix Matrix::operator*(const Matrix& rhs) {
 	int P = this->width;
 
 	for (int i = 0; i < M; ++i) {
-		double* resultLine = result.matrix + i * N;
+		T* resultLine = result.matrix + i * N;
 		for (int j = 0; j < P; ++j) {
-			double thisValue = this->matrix[i * P + j];
-			double* rhsLine = rhs.matrix + N * j;
+			T thisValue = this->matrix[i * P + j];
+			T* rhsLine = rhs.matrix + N * j;
 			for (int k = 0; k < N; ++k) {
 				resultLine[k] += thisValue * rhsLine[k];
 			}
@@ -114,56 +109,65 @@ Matrix Matrix::operator*(const Matrix& rhs) {
 	return result;
 }
 
-Matrix Matrix::operator*(const double number) {
+template <typename T>
+Matrix<T> Matrix<T>::operator*(const T& value) const{
 	Matrix result(*this);
-	for (int i = 0; i < this->height * this->width; ++i) {
-		result.matrix[i] *= number;
+	for (int i = 0; i < height * width; ++i) {
+		result.matrix[i] *= value;
 	}
 	return result;
 }
 
-double* Matrix::operator[](const int _height) {
+template <typename T>
+T* Matrix<T>::operator[](int _height) {
 	return matrix + width * _height;
 }
 
-const double* Matrix::operator[](const int _height) const {
+template <typename T>
+const T* Matrix<T>::operator[]( int _height) const {
 	return matrix + width * _height;
 }
 
-Matrix& Matrix::transpose() {
+template <typename T>
+Matrix<T>& Matrix<T>::transpose() {
 	swap(height, width);
 	return *this;
 }
 
-Matrix Matrix::getTransposed() {
+template <typename T>
+Matrix<T> Matrix<T>::getTransposed() const {
 	Matrix result(*this);
 	return result.transpose();
 }
 
-vector<double> Matrix::getVector() {
+template <typename T>
+vector<T> Matrix<T>::getVector() const {
 	if (height != 1) {
 		throw "it's not a vector";
 	}
-	vector<double> result(width);
-	memcpy(matrix, &result[0], sizeof(double) * width);
+
+	vector<T> result(width);
+	std::memcpy(&result[0], matrix, sizeof(T) * width);
 	return result;
 }
 
-vector<vector<double>> Matrix::getVectorOfVectors() {
-	vector<vector<double>> result(height, vector<double>(width));
+template <typename T>
+vector<vector<T>> Matrix<T>::getVectorOfVectors() const {
+	vector<vector<T>> result(height, vector<T>(width));
 	for (int i = 0; i < height; ++i) {
-		memcpy(matrix + i * width, &result[i][0], sizeof(double) * width);
+		std::memcpy(&result[i][0], matrix + i * width, sizeof(T) * width);
 	}
 	return result;
 }
 
-double Matrix::getDeterminante() const{
+template <typename T>
+T Matrix<T>::getDeterminante() const {
 	if (height != width) {
 		throw "this isn't square matrix";
 	}
 
-	double result = 0;
-	double temp; // using for intermediate multiplication 
+	T result = T();
+	T temp; // using for intermediate multiplication 
 	int* transposition = new int[height];
 	for (int i = 0; i < height; ++i) {
 		transposition[i] = i;
@@ -206,33 +210,34 @@ double Matrix::getDeterminante() const{
 	return result;
 }
 
-double Matrix::getHeight() const {
+template <typename T>
+int Matrix<T>::getHeight() const {
 	return height;
 }
 
-double Matrix::getWidth() const{
+template <typename T>
+int Matrix<T>::getWidth() const{
 	return width;
 }
 
-void Matrix::setEpsilon(double newEpsilon) {
-	epsilon = newEpsilon;
-}
-
-double Matrix::getEpsilon() const { 
-	return epsilon;
-}
-
-void Matrix::printfMatrix() {
-	for (int i = 0; i < height; ++i) {
-		for (int j = 0; j < width; ++j) {
-			printf("%9.6f  ", matrix[i][j]);
+template <typename T>
+void Matrix<T>::printfMatrix() const {
+	try {
+		for (int i = 0; i < height; ++i) {
+			for (int j = 0; j < width; ++j) {
+				printf("%9.6f  ", matrix[i * width + j]);
+			}
+			printf("\n");
 		}
-		printf("\n");
+	}
+	catch (exception e) {
+		throw "can not be printed default";
 	}
 }
 
-Matrix Matrix::createUnitMatrix(int size) {
-	Matrix result(size, size, 0);
+template <typename T>
+Matrix<T> Matrix<T>::createUnitMatrix(int size) {
+	Matrix<T> result(size, size, 0);
 	for (int i = 0; i < size; ++i) {
 		result[i][i] = 1;
 	}

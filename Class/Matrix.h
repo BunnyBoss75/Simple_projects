@@ -4,6 +4,7 @@
 #include <vector>
 using namespace std;
 
+template <typename T>
 class Matrix {
 public:
 	Matrix();
@@ -11,41 +12,36 @@ public:
 	Matrix(Matrix&& other);
 	
 	Matrix(int _heigth, int _width);
-	Matrix(int _height, int _width, double value);
+	Matrix(int _height, int _width, const T& value);
 
 	~Matrix();
 
-	Matrix& operator=(const Matrix& rhs);
-	Matrix& operator=(Matrix&& rhs);
+	Matrix<T>& operator=(const Matrix<T>& rhs);
+	Matrix<T>& operator=(Matrix<T>&& rhs);
 
-	bool operator==(const Matrix& rhs);
-	Matrix operator+(const Matrix& rhs);
-	Matrix operator-(const Matrix& rhs);
-	Matrix operator*(const Matrix& rhs);
+	Matrix<T> operator+(const Matrix<T>& rhs) const;
+	Matrix<T> operator-(const Matrix<T>& rhs) const;
+	Matrix<T> operator*(const Matrix<T>& rhs) const;
 
-	Matrix operator*(const double number);
+	Matrix<T> operator*(const T& value) const;
 
-	double* operator[](const int _height);
-	const double* operator[](const int _height) const;
+	T* operator[](int _height);
+	const T* operator[](int _height) const;
 
 	Matrix& transpose();
-	Matrix getTransposed();
-	vector<double> getVector();
-	vector<vector<double>> getVectorOfVectors();
-	double getDeterminante() const;
+	Matrix getTransposed() const;
+	vector<T> getVector() const;
+	vector<vector<T>> getVectorOfVectors() const;
+	T getDeterminante() const;
 
-	double getHeight() const;
-	double getWidth() const;
-	void setEpsilon(double newEpsilon);
-	double getEpsilon() const;
+	int getHeight() const;
+	int getWidth() const;
 
-	void printfMatrix();
-
-	static Matrix createUnitMatrix(int size);
+	void printfMatrix() const;
+	
+	static Matrix<T> createUnitMatrix(int size);
 private:
-	double epsilon;
-
 	int height;
 	int width;
-	double* matrix;
+	T* matrix;
 };
