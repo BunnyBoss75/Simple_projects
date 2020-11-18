@@ -1,5 +1,9 @@
 # Simple_projects
 
+Easy_Pay_2020 - C++ course project. 
+Contracts-code for coin for the Ethereum network based on solidity. 
+qt-based desktop app - purse for coin
+
 Neural_network - old attempt in making neural networks via c++
 
 Class:
